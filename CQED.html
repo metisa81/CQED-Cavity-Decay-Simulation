@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coherent State Decay Simulation in a Cavity</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+    <!-- MathJax for LaTeX rendering -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+            background-color: #111827; /* gray-900 */
+            color: #f3f4f6; /* gray-100 */
+        }
+        .control-panel {
+            background-color: #1f2937; /* gray-800 */
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .plot-container {
+            background-color: #1f2937; /* gray-800 */
+            border-radius: 0.75rem;
+            padding: 1rem;
+            height: 450px;
+            position: relative;
+        }
+        label {
+            color: #9ca3af; /* gray-400 */
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #4b5563; /* gray-600 */
+            border-radius: 5px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #3b82f6; /* blue-500 */
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        .btn {
+            padding: 0.5rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        .btn:disabled {
+            background-color: #4b5563; /* gray-600 */
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        .btn-primary {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background-color: #2563eb; /* blue-600 */
+        }
+        .btn-secondary {
+            background-color: #6b7280; /* gray-500 */
+            color: white;
+        }
+        .btn-secondary:hover:not(:disabled) {
+            background-color: #4b5563; /* gray-600 */
+        }
+        #wignerCanvasContainer {
+            min-height: 450px;
+        }
+        #photonCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        #progressBar {
+             transition: width 0.1s ease-out;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-white">Cavity Quantum Electrodynamics (CQED) Simulation</h1>
+            <p class="text-lg text-gray-400 mt-2">Time Evolution of a Coherent State due to Photon Loss</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Control Panel -->
+            <div class="lg:col-span-1 control-panel">
+                <h2 class="text-2xl font-semibold mb-6 border-b-2 border-gray-700 pb-2">Simulation Parameters</h2>
+                
+                <div class="space-y-6">
+                    <div>
+                        <label for="alphaSlider" class="block mb-2 font-medium">Initial Coherent State Amplitude \(|\alpha|\)</label>
+                        <input type="range" id="alphaSlider" min="0.5" max="3.0" value="2.0" step="0.1" class="w-full">
+                        <span class="block text-center mt-2 text-blue-400 font-mono" id="alphaValue">2.0</span>
+                    </div>
+
+                    <div>
+                        <label for="kappaSlider" class="block mb-2 font-medium">Cavity Decay Rate \(\kappa\)</label>
+                        <input type="range" id="kappaSlider" min="0.01" max="0.5" value="0.1" step="0.01" class="w-full">
+                        <span class="block text-center mt-2 text-blue-400 font-mono" id="kappaValue">0.1</span>
+                    </div>
+
+                    <div class="pt-4 flex items-center justify-center space-x-4">
+                        <button id="startButton" class="btn btn-primary">Run Simulation</button>
+                        <button id="resetButton" class="btn btn-secondary">Reset</button>
+                    </div>
+                     <div id="loading" class="text-center text-yellow-400 hidden pt-4">Calculating...</div>
+                     <!-- Progress Bar -->
+                     <div class="pt-2">
+                        <div id="progressBarContainer" class="w-full bg-gray-600 rounded-full h-2.5 hidden">
+                            <div id="progressBar" class="bg-blue-500 h-2.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visualizations -->
+            <div class="lg:col-span-2 grid grid-cols-1 xl:grid-cols-2 gap-8">
+                <div class="plot-container" id="wignerCanvasContainer">
+                     <h3 class="text-xl font-semibold text-center absolute top-4 right-0 left-0">Wigner Function in Phase Space</h3>
+                </div>
+                <div class="plot-container">
+                    <h3 class="text-xl font-semibold text-center absolute top-4 right-0 left-0">Average Photon Number \(\langle n(t) \rangle\)</h3>
+                    <canvas id="photonCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // --- Simulation Constants and Parameters ---
+        const N_MAX = 20; // Hilbert space dimension
+        const GRID_SIZE = 41; // Grid size for Wigner function calculation
+        const PHASE_SPACE_LIMIT = 4.0;
+        
+        let alpha = 2.0;
+        let kappa = 0.1;
+        let isRunning = false;
+        let photonData = [];
+
+        // --- UI Elements ---
+        const alphaSlider = document.getElementById('alphaSlider');
+        const kappaSlider = document.getElementById('kappaSlider');
+        const alphaValue = document.getElementById('alphaValue');
+        const kappaValue = document.getElementById('kappaValue');
+        const startButton = document.getElementById('startButton');
+        const resetButton = document.getElementById('resetButton');
+        const wignerContainer = document.getElementById('wignerCanvasContainer');
+        const photonCanvas = document.getElementById('photonCanvas');
+        const loadingIndicator = document.getElementById('loading');
+        const progressBarContainer = document.getElementById('progressBarContainer');
+        const progressBar = document.getElementById('progressBar');
+
+        // --- Three.js Setup for Wigner Plot ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, wignerContainer.clientWidth / wignerContainer.clientHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(wignerContainer.clientWidth, wignerContainer.clientHeight);
+        wignerContainer.appendChild(renderer.domElement);
+
+        // Add mouse controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        let userHasInteracted = false;
+        controls.addEventListener('start', () => {
+            userHasInteracted = true;
+        });
+
+        let wignerSurface;
+        const geometry = new THREE.PlaneGeometry(2 * PHASE_SPACE_LIMIT, 2 * PHASE_SPACE_LIMIT, GRID_SIZE - 1, GRID_SIZE - 1);
+        const material = new THREE.MeshPhongMaterial({ 
+            side: THREE.DoubleSide, 
+            vertexColors: true,
+            shininess: 50
+        });
+        
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 10, 7.5);
+        scene.add(directionalLight);
+        camera.position.set(4, 4, 4);
+        camera.lookAt(0, 0, 0);
+
+        // --- Canvas 2D Setup for Photon Plot ---
+        const photonCtx = photonCanvas.getContext('2d');
+        
+        // --- Quantum Data Structures ---
+        let rho; // Density matrix
+        const annihilationOp = createAnnihilationOperator(N_MAX);
+        const creationOp = createCreationOperator(N_MAX);
+        const numberOp = createNumberOperator(N_MAX);
+
+        // --- Helper and Quantum Functions ---
+        function multiply(A, B) {
+            const C = Array(N_MAX).fill(0).map(() => Array(N_MAX).fill(0).map(() => [0, 0]));
+            for (let i = 0; i < N_MAX; i++) {
+                for (let j = 0; j < N_MAX; j++) {
+                    for (let k = 0; k < N_MAX; k++) {
+                        const real = A[i][k][0] * B[k][j][0] - A[i][k][1] * B[k][j][1];
+                        const imag = A[i][k][0] * B[k][j][1] + A[i][k][1] * B[k][j][0];
+                        C[i][j][0] += real;
+                        C[i][j][1] += imag;
+                    }
+                }
+            }
+            return C;
+        }
+
+        function createAnnihilationOperator(dim) {
+            const op = Array(dim).fill(0).map(() => Array(dim).fill(0).map(() => [0, 0]));
+            for (let i = 1; i < dim; i++) {
+                op[i - 1][i][0] = Math.sqrt(i);
+            }
+            return op;
+        }
+
+        function createCreationOperator(dim) {
+            const op = Array(dim).fill(0).map(() => Array(dim).fill(0).map(() => [0, 0]));
+            for (let i = 0; i < dim - 1; i++) {
+                op[i + 1][i][0] = Math.sqrt(i + 1);
+            }
+            return op;
+        }
+        
+        function createNumberOperator(dim) {
+            return multiply(createCreationOperator(dim), createAnnihilationOperator(dim));
+        }
+
+        const factorial = (n) => (n <= 1 ? 1 : n * factorial(n - 1));
+        const factCache = Array(N_MAX).fill(0).map((_, i) => factorial(i));
+
+        async function initializeState(alpha_val) {
+            return new Promise(resolve => {
+                rho = Array(N_MAX).fill(0).map(() => Array(N_MAX).fill(0).map(() => [0, 0]));
+                const alpha_sq = alpha_val * alpha_val;
+                
+                const coherent_ket = Array(N_MAX).fill(0).map(() => [0,0]);
+                for (let n = 0; n < N_MAX; n++) {
+                    const val = Math.exp(-alpha_sq / 2) * Math.pow(alpha_val, n) / Math.sqrt(factCache[n]);
+                    coherent_ket[n] = [val, 0];
+                }
+
+                for (let n = 0; n < N_MAX; n++) {
+                    for (let m = 0; m < N_MAX; m++) {
+                        rho[n][m][0] = coherent_ket[n][0] * coherent_ket[m][0] + coherent_ket[n][1] * coherent_ket[m][1];
+                        rho[n][m][1] = coherent_ket[n][1] * coherent_ket[m][0] - coherent_ket[n][0] * coherent_ket[m][1];
+                    }
+                }
+                resolve();
+            });
+        }
+        
+        function calculateWigner(x, p) {
+            let sumReal = 0;
+            const laguerre = (n, alpha, x) => {
+                if (n === 0) return 1; if (n === 1) return 1 + alpha - x;
+                let L_n_minus_2 = 1, L_n_minus_1 = 1 + alpha - x, L_n = 0;
+                for (let i = 2; i <= n; i++) {
+                    L_n = ((2 * (i - 1) + 1 + alpha - x) * L_n_minus_1 - ((i - 1) + alpha) * L_n_minus_2) / i;
+                    L_n_minus_2 = L_n_minus_1; L_n_minus_1 = L_n;
+                }
+                return L_n;
+            };
+            const alpha_val_sq = x * x + p * p;
+            for (let n = 0; n < N_MAX; n++) {
+                for (let m = 0; m < N_MAX; m++) {
+                    const rho_mn = rho[m][n];
+                    if (rho_mn[0] === 0 && rho_mn[1] === 0) continue;
+                    let term;
+                    if (m >= n) { term = Math.pow(-1, n) * Math.sqrt(factCache[n] / factCache[m]) * Math.pow(2 * alpha_val_sq, (m - n) / 2) * laguerre(n, m - n, 2 * alpha_val_sq); }
+                    else { term = Math.pow(-1, m) * Math.sqrt(factCache[m] / factCache[n]) * Math.pow(2 * alpha_val_sq, (n - m) / 2) * laguerre(m, n - m, 2 * alpha_val_sq); }
+                    const phase = Math.atan2(p, x) * (m - n);
+                    const cos_phase = Math.cos(phase), sin_phase = Math.sin(phase);
+                    const realPart = rho_mn[0] * (term * cos_phase) - rho_mn[1] * (term * sin_phase);
+                    sumReal += realPart;
+                }
+            }
+            return (1 / Math.PI) * Math.exp(-alpha_val_sq) * sumReal;
+        }
+
+        function updateWignerSurface() {
+            const vertices = wignerSurface.geometry.attributes.position;
+            const colors = wignerSurface.geometry.attributes.color;
+            let maxVal = -Infinity, minVal = Infinity;
+            const wignerValues = [];
+            for (let i = 0; i <= GRID_SIZE - 1; i++) {
+                const p = (i / (GRID_SIZE - 1) - 0.5) * 2 * PHASE_SPACE_LIMIT;
+                for (let j = 0; j <= GRID_SIZE - 1; j++) {
+                    const x = (j / (GRID_SIZE - 1) - 0.5) * 2 * PHASE_SPACE_LIMIT;
+                    const z = calculateWigner(x, p);
+                    wignerValues.push(z);
+                    if (z > maxVal) maxVal = z;
+                    if (z < minVal) minVal = z;
+                }
+            }
+            const range = Math.max(0.01, maxVal - minVal);
+            const color = new THREE.Color();
+            for (let i = 0; i < vertices.count; i++) {
+                const z = wignerValues[i];
+                vertices.setZ(i, z * 2.0);
+                const normalized = (z - minVal) / range;
+                color.setHSL(0.7 - normalized * 0.7, 1.0, 0.5);
+                colors.setXYZ(i, color.r, color.g, color.b);
+            }
+            vertices.needsUpdate = true;
+            colors.needsUpdate = true;
+        }
+
+        // --- Master Equation Solver ---
+        function timeStep(dt) {
+            const a_rho = multiply(annihilationOp, rho);
+            const a_rho_a_dag = multiply(a_rho, creationOp);
+            const n_rho = multiply(numberOp, rho);
+            const rho_n = multiply(rho, numberOp);
+            const rho_dot = Array(N_MAX).fill(0).map(() => Array(N_MAX).fill(0).map(() => [0, 0]));
+            for (let i = 0; i < N_MAX; i++) {
+                for (let j = 0; j < N_MAX; j++) {
+                    rho_dot[i][j][0] = kappa * (a_rho_a_dag[i][j][0] - 0.5 * n_rho[i][j][0] - 0.5 * rho_n[i][j][0]);
+                    rho_dot[i][j][1] = kappa * (a_rho_a_dag[i][j][1] - 0.5 * n_rho[i][j][1] - 0.5 * rho_n[i][j][1]);
+                }
+            }
+            for (let i = 0; i < N_MAX; i++) {
+                for (let j = 0; j < N_MAX; j++) {
+                    rho[i][j][0] += rho_dot[i][j][0] * dt;
+                    rho[i][j][1] += rho_dot[i][j][1] * dt;
+                }
+            }
+        }
+        
+        function getPhotonNumber() {
+            let n_avg = 0;
+            for(let i=0; i<N_MAX; i++) { n_avg += rho[i][i][0] * i; }
+            return n_avg;
+        }
+
+        // --- Plotting Functions ---
+        function drawPhotonPlot() {
+            photonCtx.clearRect(0, 0, photonCanvas.width, photonCanvas.height);
+            const padding = 50;
+            const w = photonCanvas.width - 2 * padding;
+            const h = photonCanvas.height - 2 * padding;
+            const initialPhotons = alpha * alpha;
+            const maxTime = 10.0 / Math.max(kappa, 0.1);
+            
+            photonCtx.strokeStyle = '#4b5563'; photonCtx.fillStyle = '#9ca3af';
+            photonCtx.font = '12px system-ui'; photonCtx.textAlign = 'center'; photonCtx.textBaseline = 'middle';
+            
+            photonCtx.beginPath();
+            photonCtx.moveTo(padding, padding);
+            photonCtx.lineTo(padding, padding + h);
+            photonCtx.lineTo(padding + w, padding + h);
+            photonCtx.stroke();
+            
+            for (let i = 0; i <= 4; i++) {
+                const y = padding + h * (1 - i/4);
+                const val = (initialPhotons * i/4).toFixed(2);
+                photonCtx.fillText(val, padding - 25, y);
+                photonCtx.beginPath(); photonCtx.moveTo(padding - 5, y); photonCtx.lineTo(padding, y); photonCtx.stroke();
+            }
+
+            for (let i = 0; i <= 4; i++) {
+                const x = padding + w * (i/4);
+                const val = (maxTime * i/4).toFixed(1);
+                photonCtx.fillText(val, x, padding + h + 20);
+                photonCtx.beginPath(); photonCtx.moveTo(x, padding + h); photonCtx.lineTo(x, padding + h + 5); photonCtx.stroke();
+            }
+
+            photonCtx.save();
+            photonCtx.rotate(-Math.PI / 2);
+            photonCtx.fillText("Photon Count", -photonCanvas.height / 2, 15);
+            photonCtx.restore();
+            photonCtx.fillText("Time", photonCanvas.width / 2, photonCanvas.height - 15);
+            
+            if (photonData.length < 2) return;
+            
+            photonCtx.strokeStyle = '#3b82f6'; photonCtx.lineWidth = 2;
+            photonCtx.beginPath();
+            
+            for(let i=0; i<photonData.length; i++) {
+                const point = photonData[i];
+                const x = padding + (point.time / maxTime) * w;
+                const y = padding + h * (1 - point.photons / initialPhotons);
+                 if (i === 0) { photonCtx.moveTo(x, y); } else { photonCtx.lineTo(x, y); }
+            }
+            photonCtx.stroke();
+        }
+
+        // --- Main Simulation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            controls.update(); // Required for damping and user interaction
+
+            // Only auto-rotate if the user has not interacted with the controls yet
+            if (wignerSurface && !userHasInteracted) {
+                scene.rotation.y += 0.002;
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        async function runFullSimulation() {
+            if (isRunning) return;
+            isRunning = true;
+            startButton.disabled = true;
+            resetButton.disabled = true;
+            loadingIndicator.textContent = 'Running simulation...';
+            loadingIndicator.classList.remove('hidden');
+            progressBar.style.width = '0%';
+            progressBarContainer.classList.remove('hidden');
+
+            await initializeState(alpha);
+            
+            photonData = [{ time: 0, photons: getPhotonNumber() }];
+            let time = 0;
+            const dt = 0.01;
+            const maxTime = 10.0 / Math.max(kappa, 0.1);
+            const totalSteps = Math.floor(maxTime / dt);
+
+            let step = 0;
+            function simulationStep() {
+                const stepsPerFrame = Math.ceil(totalSteps / 100); 
+                for (let i = 0; i < stepsPerFrame && step < totalSteps; i++, step++) {
+                    timeStep(dt);
+                    time += dt;
+                }
+                photonData.push({ time: time, photons: getPhotonNumber() });
+                
+                const progress = Math.min(100, (step / totalSteps) * 100);
+                progressBar.style.width = `${progress}%`;
+
+                if (step < totalSteps) {
+                    requestAnimationFrame(simulationStep);
+                } else {
+                    progressBar.style.width = '100%';
+                    updateWignerSurface();
+                    drawPhotonPlot();
+
+                    loadingIndicator.classList.add('hidden');
+                    setTimeout(() => {
+                        progressBarContainer.classList.add('hidden');
+                    }, 1500);
+                    
+                    startButton.disabled = false;
+                    resetButton.disabled = false;
+                    isRunning = false;
+                }
+            }
+            simulationStep();
+        }
+
+        // --- Setup and Event Handlers ---
+        async function reset() {
+            startButton.disabled = true;
+            loadingIndicator.textContent = 'Calculating initial state...';
+            loadingIndicator.classList.remove('hidden');
+            
+            progressBarContainer.classList.add('hidden');
+            progressBar.style.width = '0%';
+            
+            await initializeState(alpha);
+            
+            const initialPhotons = getPhotonNumber();
+            photonData = [{time: 0, photons: initialPhotons}];
+            
+            if (wignerSurface) scene.remove(wignerSurface);
+            wignerSurface = new THREE.Mesh(geometry, material);
+            wignerSurface.geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(geometry.attributes.position.count * 3), 3));
+            scene.add(wignerSurface);
+            
+            updateWignerSurface();
+            drawPhotonPlot();
+            
+            loadingIndicator.classList.add('hidden');
+            startButton.disabled = false;
+        }
+
+        alphaSlider.addEventListener('input', (e) => {
+            alpha = parseFloat(e.target.value);
+            alphaValue.textContent = alpha.toFixed(1);
+            reset();
+        });
+
+        kappaSlider.addEventListener('input', (e) => {
+            kappa = parseFloat(e.target.value);
+            kappaValue.textContent = kappa.toFixed(2);
+            reset();
+        });
+
+        startButton.addEventListener('click', runFullSimulation);
+        resetButton.addEventListener('click', reset);
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = wignerContainer.clientWidth / wignerContainer.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(wignerContainer.clientWidth, wignerContainer.clientHeight);
+            
+            photonCanvas.width = photonCanvas.parentElement.clientWidth;
+            photonCanvas.height = photonCanvas.parentElement.clientHeight;
+            drawPhotonPlot();
+        });
+
+        // Initial setup
+        photonCanvas.width = photonCanvas.parentElement.clientWidth;
+        photonCanvas.height = photonCanvas.parentElement.clientHeight;
+        reset();
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>
+
+
