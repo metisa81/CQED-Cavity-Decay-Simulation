@@ -1,0 +1,118 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+\title{Decay of a Coherent State in a Single-Mode Optical Cavity}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+In this problem, we investigate the time evolution of a coherent light state $\lvert \alpha \rangle$ in a single-mode optical cavity that leaks photons at a rate $\kappa$. The system dynamics are described by the following Lindblad master equation:
+\[
+\frac{d\rho}{dt} = -\frac{i}{\hbar}[H, \rho] + \mathcal{L}(\rho)
+\]
+where $H = \hbar \omega_c (a^\dagger a + 1/2)$ is the system Hamiltonian and $\mathcal{L}(\rho)$ is the Lindblad superoperator:
+\[
+\mathcal{L}(\rho) = \frac{\kappa}{2} (2a\rho a^\dagger - a^\dagger a \rho - \rho a^\dagger a)
+\]
+By moving to a rotating frame at frequency $\omega_c$, the Hamiltonian part is eliminated and the equation simplifies to:
+\begin{equation}
+\frac{d\rho}{dt} = \frac{\kappa}{2} (2a\rho a^\dagger - a^\dagger a \rho - \rho a^\dagger a)
+\label{eq:lindblad}
+\end{equation}
+
+\section{Average Photon Number}
+The average photon number is defined as $\langle n(t) \rangle = \operatorname{Tr}(\rho(t) a^\dagger a)$. To find the governing differential equation, we use the following rule:
+\[
+\frac{d}{dt}\langle O \rangle = \operatorname{Tr}\left(\frac{d\rho}{dt} O \right)
+\]
+Substituting the Lindblad equation (\ref{eq:lindblad}) and the operator $O = a^\dagger a = N$, we have:
+\[
+\frac{d}{dt}\langle N \rangle = \operatorname{Tr}\left( \frac{\kappa}{2} (2a\rho a^\dagger - a^\dagger a \rho - \rho a^\dagger a) \, a^\dagger a \right)
+\]
+Using the cyclic property of the trace (i.e., $\operatorname{Tr}(ABC) = \operatorname{Tr}(BCA)$), we compute each term separately:
+\begin{align*}
+\operatorname{Tr}(2a\rho a^\dagger N) &= 2\operatorname{Tr}(\rho a^\dagger N a) \\
+\operatorname{Tr}(-a^\dagger a \rho N) &= -\operatorname{Tr}(\rho N a^\dagger a) \\
+\operatorname{Tr}(-\rho a^\dagger a N) &= -\operatorname{Tr}(\rho N a^\dagger a)
+\end{align*}
+Combining these expressions, we obtain:
+\[
+\frac{d}{dt}\langle N \rangle = \frac{\kappa}{2} \operatorname{Tr}\left( \rho \left[ 2a^\dagger N a - 2 N a^\dagger a \right] \right)
+\]
+Now we use the commutation relations. Since $[a, a^\dagger] = 1$, we have:
+\[
+a^\dagger a a = a^\dagger (a^\dagger a + 1) = a^\dagger a^\dagger a + a^\dagger
+\]
+But for simplification, we use the relation $N a = a^\dagger a a = a (a^\dagger a - 1) = a (N - 1)$. Therefore:
+\[
+a^\dagger N a = a^\dagger a (N - 1) = N (N - 1)
+\]
+Also, $N a^\dagger a = N^2$. Substituting these relations, we have:
+\[
+2a^\dagger N a - 2 N a^\dagger a = 2N(N - 1) - 2N^2 = 2N^2 - 2N - 2N^2 = -2N
+\]
+Thus:
+\[
+\frac{d}{dt}\langle N \rangle = \frac{\kappa}{2} \operatorname{Tr}\left( \rho (-2N) \right) = -\kappa \operatorname{Tr}(\rho N) = -\kappa \langle N(t) \rangle
+\]
+So we arrive at the following differential equation:
+\begin{equation}
+\frac{d}{dt}\langle n(t) \rangle = -\kappa \langle n(t) \rangle
+\label{eq:diffeq}
+\end{equation}
+The solution to this equation is an exponential decay:
+\[
+\langle n(t) \rangle = \langle n(0) \rangle e^{-\kappa t}
+\]
+Since the initial state is a coherent state $\lvert \alpha \rangle$, we have $\langle n(0) \rangle = |\alpha|^2$. Therefore, the final solution is:
+\begin{equation}
+\boxed{\langle n(t) \rangle = |\alpha|^2 e^{-\kappa t}}
+\label{eq:solution}
+\end{equation}
+
+\section{Evolution of the Wigner Function in Phase Space}
+The Wigner function $W(\beta)$ is a quasi-probability distribution in phase space (with axes $x$ and $p$) that completely describes the quantum state.
+
+\begin{itemize}
+\item \textbf{At time $t=0$:} The system state is $\lvert \alpha \rangle$. The Wigner function for a coherent state is a \textbf{symmetric} Gaussian distribution:
+\[
+W_0(\beta) = \frac{2}{\pi} \exp\left( -2|\beta - \alpha|^2 \right)
+\]
+This function is centered at the point $\alpha$ in phase space and has the minimum possible uncertainty (a circle with radius $1/2$ in appropriate units).
+
+\item \textbf{At time $t > 0$:} As can be inferred from solving the Lindblad equation, the system state at any time $t$ remains a \textbf{coherent state}, but with an amplitude that decays exponentially:
+\[
+\lvert \psi(t) \rangle = \lvert \alpha e^{-\kappa t / 2} \rangle
+\]
+The reason for the exponent $-\kappa t / 2$ is that the amplitude $\alpha$ is related to the square root of the average photon number ($|\alpha| = \sqrt{\langle n \rangle}$). From equation (\ref{eq:solution}), we have $\sqrt{\langle n(t) \rangle} = |\alpha| e^{-\kappa t / 2}$.
+
+Consequently, the Wigner function at time $t$ will also be a symmetric Gaussian distribution, but its center moves towards the origin:
+\[
+W_t(\beta) = \frac{2}{\pi} \exp\left( -2|\beta - \alpha e^{-\kappa t / 2}|^2 \right)
+\]
+
+\item \textbf{Evolution Properties:}
+\begin{enumerate}
+    \item \textbf{Center of Distribution:} The center of the Gaussian distribution starts at the point $\alpha$ and moves in a straight line towards the origin ($\beta = 0$): $\alpha(t) = \alpha e^{-\kappa t / 2}$.
+    \item \textbf{Width of Distribution:} The width of the Gaussian distribution, which represents the quantum noise of the state, remains \textbf{constant} over time. This indicates that photon leakage from the cavity does \textbf{not destroy} the quantum coherence of the state; it only reduces its energy (average photon number).
+    \item \textbf{Final State:} At $t \to \infty$, the center of the distribution reaches the origin of phase space, and the state becomes the \textbf{vacuum state} $\lvert 0 \rangle$. The Wigner function of the vacuum state is also a symmetric Gaussian centered at the origin:
+    \[
+    W_{\infty}(\beta) = \frac{2}{\pi} \exp\left( -2|\beta|^2 \right)
+    \]
+\end{enumerate}
+\end{itemize}
+
+\section{Conclusion}
+The decay of a coherent state in a cavity due to photon leakage has two key features:
+\begin{enumerate}
+\item The average photon number (energy) decays exponentially at rate $\kappa$: $\langle n(t) \rangle = |\alpha|^2 e^{-\kappa t}$.
+\item The quantum state itself preserves its coherence and remains a coherent state with a decaying amplitude: $|\psi(t)\rangle = | \alpha e^{-\kappa t / 2} \rangle$. In phase space, this corresponds to the center of the Wigner function moving towards the origin, without any change in its width.
+\end{enumerate}
+
+\end{document}
